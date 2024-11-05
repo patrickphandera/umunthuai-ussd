@@ -2,3 +2,4 @@ python-dotenv
 pymongo
 flask
 flask_cors
+gunicorn
