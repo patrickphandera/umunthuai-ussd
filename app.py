@@ -44,21 +44,21 @@ def ussd_chat():
 
     # Start the conversation
     if text == "":
-        response = "CON Welcome to the USSD Chatbot!\n"
-        response += "Type your question to begin."
+        response = "CON Takulandilani ku umunthu AI!\n"
+        response += "Yambani ndi kufunsa funso lililonse la malamulo."
     else:
         # Forward user input to OpenAI API for a response
         chat_response = query_model(text)
 
         if "Error" in chat_response:
-            response = f"END Sorry, there was an error: {chat_response}"
+            response = f"END Pepani, chinachake chalakwika: {chat_response}"
         else:
             response = f"CON {chat_response}\n\n"
-            response += "Reply with another question or type '0' to end."
+            response += "Yankhani ndi funso lina, olo lembani '0' to end."
 
     # End session if user enters '0'
     if text == "0":
-        response = "END Thank you for using the chatbot. Goodbye!"
+        response = "END Ndathokoza pocheza nanu. Zikomo!"
 
     # Return USSD response
     return make_response(response, 200, {"Content-Type": "text/plain"})
