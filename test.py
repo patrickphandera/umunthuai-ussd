@@ -25,12 +25,14 @@ STATE_CHAT = "chat"
 @app.route("/")
 def home():
     return "Environment Variables Loaded Successfully!"
-
-@app.route("/", methods=["POST"])
+@app.route("/ussd", methods=["POST"])
 def ussd():
     session_id = request.form.get("sessionId")
     phone_number = request.form.get("phoneNumber")
     text = request.form.get("text").strip()
+
+    # Initialize response with a default message
+    response = "END An unexpected error occurred. Please try again."
 
     # Get user from MongoDB
     user = users_collection.find_one({"phone_number": phone_number})
@@ -123,6 +125,5 @@ def ussd():
                 response = f"CON You said: {text}. Type 'exit' to end chat."
 
     return response
-
 if __name__ == "__main__":
     app.run(debug=True)
