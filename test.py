@@ -25,7 +25,7 @@ STATE_CHAT = "chat"
 @app.route("/")
 def home():
     return "Environment Variables Loaded Successfully!"
-@app.route("/ussd", methods=["POST"])
+@app.route("/", methods=["POST"])
 def ussd():
     session_id = request.form.get("sessionId")
     phone_number = request.form.get("phoneNumber")
