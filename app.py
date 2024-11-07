@@ -1,65 +1,85 @@
-from flask import Flask, request, jsonify, make_response
-import openai
-from flask_cors import CORS
-import os
-from dotenv import load_dotenv
+from flask import Flask, request
+import random
 
-# Load environment variables from .env file
-load_dotenv()
-
-# Initialize Flask app and configurations
 app = Flask(__name__)
-CORS(app)
 
-# Set up OpenAI API key and model
-openai.api_key = os.getenv("OPENAI_API_KEY")
-MODEL = os.getenv("MODEL")
+# Mock data for simulation
+mock_users = {}  # Stores user data as {"phone_number": {"password": "password"}}
+mock_games = [
+    {"id": 1, "league": "Simama", "teams": "Mightty wonderers vs Blue Eagles", "price": 50},
+    {"id": 2, "league": "Tnm League", "teams": "Nyasa big bullets vs Mighty wonders", "price": 70},
+    {"id": 3, "league": "Tnm League", "teams": "Nyasa big bullets vs Silver strikers", "price": 60},
+]
 
-# System context for OpenAI model
-system_context = 'you are a helpful assistant that answers question from user from chichewa constitution of malawi in the form Chapter:<constitution_chapter>,Section:<costitution_section>, <answer_from_chichewa_constititution>'
+@app.route('/', methods=['POST', 'GET'])
+def ussd():
+    # Get the parameters from Africa's Talking, defaulting `text` to an empty string if not provided
+    session_id = request.form.get("sessionId", "")
+    service_code = request.form.get("serviceCode", "")
+    phone_number = request.form.get("phoneNumber", "")
+    text = request.form.get("text", "")
 
-# Helper function to call OpenAI API with query
-def query_model(query):
-    try:
-        response = openai.chat.completions.create(
-        model=MODEL,
-            messages=[
-                {"role": "system", "content": system_context},
-                {"role": "user", "content": query },
-                ],
-            temperature=0,
-            )
-        generated_text = response.choices[0].message.content
-        return generated_text
-    except Exception as e:
-        return f"Error during API call: {str(e)}"
+    # Split the user input based on '*'
+    text_array = text.split('*')
+    session_level = len(text_array)
 
-# USSD endpoint to handle chat without database
-@app.route('/', methods=['POST'])
-def ussd_chat():
-    # Retrieve user input from USSD request
-    session_id = request.form.get('sessionId', '')
-    phone_number = request.form.get('phoneNumber', '')
-    text = request.form.get('text', '')
+    response = ""
 
-    # Start the conversation
-    if text == "":
-        response = "CON Takulandilani ku umunthu AI!\n"
-        response += "Yambani ndi kufunsa funso lililonse la malamulo."
-    else:
-        # Forward user input to OpenAI API for a response
-        chat_response = query_model(text)
-
-        if "Error" in chat_response:
-            response = f"END Pepani, chinachake chalakwika: {chat_response}"
+    # Step 1: Register or login
+    if session_level == 1:
+        if phone_number in mock_users:
+            response = "CON Enter your password to login:"
         else:
-            response = f"CON {chat_response}\n\n"
-            response += "Yankhani ndi funso lina, olo lembani '0' to end."
+            response = "CON Welcome! Enter a password to register:"
 
-    # End session if user enters '0'
-    if text == "0":
-        response = "END Ndathokoza pocheza nanu. Zikomo!"
+    # Step 2: Handle Registration/Login
+    elif session_level == 2:
+        password = text_array[1] if len(text_array) > 1 else ""
 
-    # Return USSD response
-    return make_response(response, 200, {"Content-Type": "text/plain"})
+        if phone_number not in mock_users:
+            # Register the user
+            mock_users[phone_number] = {"password": password}
+            response = "CON Registration successful! Please re-enter your password to confirm login:"
+        else:
+            # Login validation
+            if mock_users[phone_number]["password"] == password:
+                response = "CON Login successful! Select a game:\n"
+                for idx, game in enumerate(mock_games, 1):
+                    response += f"{idx}. {game['league']} - {game['teams']} @ {game['price']} MWK\n"
+            else:
+                response = "END Incorrect password. Please try again."
 
+    # Step 3: Game Selection
+    elif session_level == 3:
+        try:
+            game_index = int(text_array[2]) - 1
+            if 0 <= game_index < len(mock_games):
+                selected_game = mock_games[game_index]
+                response = f"CON You selected: {selected_game['league']} - {selected_game['teams']}\n"
+                response += f"Ticket Price: {selected_game['price']} MWK\n"
+                response += "1. Confirm Booking\n2. Cancel"
+            else:
+                response = "END Invalid selection. Please try again."
+        except (IndexError, ValueError):
+            response = "END Invalid input. Please try again."
+
+    # Step 4: Confirm or Cancel Booking
+    elif session_level == 4:
+        if text_array[3] == "1":
+            ticket_code = generate_ticket_code()
+            response = f"END Booking confirmed! Your ticket code: {ticket_code}"
+        else:
+            response = "END Booking cancelled."
+
+    else:
+        response = "END Invalid input. Please try again."
+
+    # Return the response
+    return response, 200
+
+# Function to generate a unique ticket code
+def generate_ticket_code():
+    return f'TK{random.randint(100000, 999999)}'
+
+# if __name__ == "__main__":
+#     app.run(port=5000, debug=True)
